@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>大樹文字雲關鍵字產生器(Plus版)</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqcloud/1.0.4/jqcloud.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqcloud/1.0.4/jqcloud.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f6f6f6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: url('1.png');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .input-group label {
+            margin-right: 5px;
+        }
+
+        #wordCloudContainer {
+            border: 1px solid #e1e1e1;
+            margin-top: 20px;
+        }
+
+        #keywordList h2 {
+            margin-top: 20px;
+        }
+
+    @media (max-width: 600px) {
+        /* 螢幕寬度小於 600px 時的樣式調整 */
+        .container {
+            width: 90%;
+        }
+        
+        textarea {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>大樹文字雲關鍵字產生器(Plus版)</h1>
+        <h4>此版本會較完整產生文字雲，剔除標點符號，若僅要快速產生文字雲請使用快速版。</h4>
+        <textarea id="textInput" rows="6" placeholder="在這裡輸入文字句子"></textarea>
+        <div class="input-group">
+            <label for="numKeywords">產生關鍵字數量：</label>
+            <input type="number" id="numKeywords" value="30" min="1" max="100">
+        </div>
+        <div class="input-group">
+            <label for="minWordLength">最小字詞長度：</label>
+            <input type="number" id="minWordLength" value="2" min="1">
+        </div>
+        <div class="input-group">
+            <label for="maxWordLength">最大字詞長度：</label>
+            <input type="number" id="maxWordLength" value="5" max="100">
+        </div>
+        <button onclick="generateKeywordsAndWordCloud()">產生</button>
+        <button onclick="saveWordCloud()">保存圖片</button>
+        <p><b>提醒1</b>：若文本字數過多，須等待運算完成，字數多可能運算較久。</p>
+        <p><b>提醒2</b>：運算中網頁可能沒有回應，點選等一下不要關閉等待完成。</p>
+        <p><b>提醒3</b>：重複使用可以點選重置進度條方式確認完成與否。</p>
+<div id="progressBarContainer">
+        <p id="progress">進度: 0%</p>
+<button onclick="resetProgressBar()">重置進度條</button>
+        <progress id="progressBar" max="100" value="0"></progress>
+</div>
+        <div id="wordCloudContainer" style="width: 100%; height: 400px;"></div>
+        <div id="keywordList"></div>
+    </div>
+
+    <script>
+        var globalKeywords = {};
+        var sortedKeywords = [];
+        var filteredKeywords = [];
+function generateKeywordsAndWordCloud() {
+    // Reset the globalKeywords object
+    globalKeywords = {};
+
+    var textInput = document.getElementById("textInput").value;
+    var totalSubstrings = textInput.length * (textInput.length + 1) / 2;
+    var processedSubstrings = 0;
+
+    for (var index = 0; index < textInput.length; index++) {
+        for (var len = 1; len <= textInput.length - index; len++) {
+            var word = textInput.substr(index, len).trim();
+            if (word.length > 1) {
+                word = word.replace(/[\p{P}\p{S}]/gu, ""); // 移除標點符號
+                if (word !== "" && !/[0-9]/.test(word)) {
+                    if (!globalKeywords[word]) {
+                        globalKeywords[word] = 1;
+                    } else {
+                        globalKeywords[word]++;
+                    }
+                }
+            }
+            processedSubstrings++;
+            var progress = (processedSubstrings / totalSubstrings) * 100;
+            updateProgressBar(progress);
+        }
+    }
+
+    sortedKeywords = [];
+    for (var word in globalKeywords) {
+        sortedKeywords.push({ text: word, weight: globalKeywords[word] });
+    }
+    sortedKeywords.sort((a, b) => b.weight - a.weight);
+
+    updateFilteredKeywords();
+    renderWordCloud();
+}
+
+        function updateProgressBar(progress) {
+            var progressBar = document.getElementById("progressBar");
+            var progressText = document.getElementById("progress");
+            progressBar.value = progress;
+            progressText.innerText = "進度: " + Math.floor(progress) + "%";
+        }
+
+        function updateKeywordList() {
+            var keywordListHtml = "<h2>關鍵字列表</h2><ul>";
+            for (var i = 0; i < filteredKeywords.length; i++) {
+                keywordListHtml += "<li>" + filteredKeywords[i].text + " (" + filteredKeywords[i].weight + "次)</li>";
+            }
+            keywordListHtml += "</ul>";
+
+            document.getElementById("keywordList").innerHTML = keywordListHtml;
+        }
+
+        function updateFilteredKeywords() {
+            var minWordLength = parseInt(document.getElementById("minWordLength").value);
+            var maxWordLength = parseInt(document.getElementById("maxWordLength").value);
+
+            filteredKeywords = sortedKeywords.filter(keyword => keyword.text.length >= minWordLength && keyword.text.length <= maxWordLength);
+            updateKeywordList();
+        }
+
+        function renderWordCloud() {
+            var numKeywords = parseInt(document.getElementById("numKeywords").value);
+
+            $("#wordCloudContainer").empty();
+            $("#wordCloudContainer").jQCloud(filteredKeywords.slice(0, numKeywords));
+        }
+
+        function saveWordCloud() {
+            // Capture the word cloud as an image using html2canvas
+            html2canvas(document.getElementById("wordCloudContainer")).then(function(canvas) {
+                // Create a temporary link to trigger the download
+                var link = document.createElement("a");
+                link.download = "wordcloud.png";
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            });
+        }
+
+    function deleteKeyword(index) {
+        if (index >= 0 && index < filteredKeywords.length) {
+            filteredKeywords.splice(index, 1); // 從過濾後的關鍵字列表中刪除該關鍵字
+            updateKeywordList(); // 更新關鍵字列表
+            renderWordCloud(); // 重新生成文字雲
+        }
+    }
+
+    function updateKeywordList() {
+        var keywordListHtml = "<h2>關鍵字列表</h2><ul>";
+        for (var i = 0; i < filteredKeywords.length; i++) {
+            keywordListHtml += "<li>" + filteredKeywords[i].text + " (" + filteredKeywords[i].weight + "次) <button onclick='deleteKeyword(" + i + ")'>x</button></li>";
+        }
+        keywordListHtml += "</ul>";
+
+        document.getElementById("keywordList").innerHTML = keywordListHtml;
+    }
+
+function resetProgressBar() {
+    updateProgressBar(0);
+}
+    </script>
+</body>
+</html>
